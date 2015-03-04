@@ -21,33 +21,36 @@ public class Application extends Controller {
     private static BraintreeGateway gateway = new BraintreeGateway(Environment.SANDBOX,sandboxMerchant_ID,sandboxPublic_Key,sandboxPrivate_Key);
 
     public static Result index() {
-        return ok(index.render("Your new application is ready."));
+        return ok();
     }
 
     public static Result clientToken(){
 
         String token = gateway.clientToken().generate();
 
-        ObjectNode result = Json.newObject();
+        ObjectNode response = Json.newObject();
 
         if(token == null) {
-            result.put("status", "KO");
-            result.put("message", "Could not get token");
-            return badRequest(result);
+            response.put("status", "KO");
+            response.put("message", "Could not get token");
+            return badRequest(response);
         } else {
-            result.put("status", "OK");
-            result.put("client_token", token);
-            return ok(result);
+            response.put("status", "OK");
+            response.put("client_token", token);
+            return ok(response);
         }
     }
 
     public static Result payment(){
+
+        // Retrieving values from the HTTP Request
+
         final Map<String, String[]> values = request().body().asFormUrlEncoded();
 
         String nonce = values.get("payment_method_nonce")[0].toString();
         String value = values.get("value")[0].toString();
 
-        // Capturing the funds using the nonce received from the client
+        // Capturing the payment using the nonce and value received from the client
 
         TransactionRequest transactionRequest = new TransactionRequest()
                 .amount(new BigDecimal(value))
@@ -59,18 +62,20 @@ public class Application extends Controller {
 
         com.braintreegateway.Result<Transaction> transactionResult = gateway.transaction().sale(transactionRequest);
 
-        ObjectNode result = Json.newObject();
+        // Sending response
+
+        ObjectNode response = Json.newObject();
 
         if (transactionResult.isSuccess()) {
-            result.put("status", "OK");
-            result.put("transaction_id", transactionResult.getTarget().getId());
-            return ok(result);
+            response.put("status", "OK");
+            response.put("transaction_id", transactionResult.getTarget().getId());
+            return ok(response);
 
         } else {
             Logger.error("Error!: " + transactionResult.getMessage());
-            result.put("status", "KO");
-            result.put("message", transactionResult.getMessage());
-            return badRequest(result);
+            response.put("status", "KO");
+            response.put("message", transactionResult.getMessage());
+            return badRequest(response);
         }
 
     }
